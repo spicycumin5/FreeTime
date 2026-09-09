@@ -1,3 +1,4 @@
 {
+  "buildCommand": "pnpm prisma migrate deploy && pnpm build",
   "crons": [{ "path": "/api/cron/activity-series", "schedule": "0 13 * * *" }]
 }
