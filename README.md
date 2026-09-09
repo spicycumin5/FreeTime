@@ -3,12 +3,14 @@
 Propose a group activity, have everyone in the party mark when they're free across a date
 range, and get the best overlapping time scheduled straight to Google Calendar with invites
 sent to the whole group. Movie-night activities also get a simple suggest-and-vote list for
-picking what to watch (via TMDB search).
+picking what to watch (via TMDB search). Activities can also repeat weekly/monthly, spawning a
+fresh round automatically and emailing the party a reminder each time.
 
 ## Stack
 
-Next.js (App Router) + TypeScript, Prisma + PostgreSQL, Auth.js (Google sign-in, reused for
-Calendar OAuth), Tailwind + shadcn/ui, Zod, date-fns / date-fns-tz, Vitest.
+Next.js (App Router) + TypeScript, Prisma + PostgreSQL (Neon in production, via its serverless
+driver), Auth.js (Google sign-in, reused for Calendar OAuth), Tailwind + shadcn/ui, Zod,
+date-fns / date-fns-tz, Resend (reminder emails), Vercel Cron (recurrence), Vitest.
 
 ## Prerequisites
 
@@ -17,6 +19,9 @@ Calendar OAuth), Tailwind + shadcn/ui, Zod, date-fns / date-fns-tz, Vitest.
   [Neon](https://neon.tech) instead)
 - A Google Cloud project with the Calendar API enabled (see below)
 - A free [TMDB](https://www.themoviedb.org/settings/api) API key, for movie search/posters
+- A free [Resend](https://resend.com) account + verified sending domain, for recurring-activity
+  reminder emails (optional — everything else works without it; reminders just get skipped and
+  logged instead of sent until this is configured)
 
 ## Google Cloud setup (one-time, manual)
 
@@ -57,6 +62,8 @@ a generated `AUTH_SECRET`) with your own values:
 AUTH_GOOGLE_ID="..."       # from Google Cloud Console
 AUTH_GOOGLE_SECRET="..."
 TMDB_API_KEY="..."         # from themoviedb.org
+RESEND_API_KEY="..."       # from resend.com — optional, see Prerequisites
+FROM_EMAIL="..."           # an address on a Resend-verified domain
 ```
 
 Then apply the schema and start the app:
@@ -87,6 +94,22 @@ whole scheduling flow without notifying anyone. Only test with `SKIP_CALENDAR_SE
 `false`) against Google accounts you control (your own + a throwaway account), never against
 real friends, until you're confident the flow works.
 
+### Testing recurring activities locally
+
+A `vercel.json` cron hits `/api/cron/activity-series` once a day in production — that doesn't
+fire in `next dev`, so exercise the same route directly instead:
+
+```bash
+curl http://localhost:3000/api/cron/activity-series -H "Authorization: Bearer $CRON_SECRET"
+```
+
+(`CRON_SECRET` in `.env.local` can be any value for local testing.) To test a series without
+waiting a week/month, create an activity with "Repeat" set, then backdate its `ActivitySeries`
+row's `nextRunAt` to the past via `pnpm prisma studio` before running the curl command above.
+A due series gets a fresh `Activity` occurrence, its `nextRunAt` advances by one interval, and
+every party member gets emailed (or, if `RESEND_API_KEY`/`FROM_EMAIL` aren't set, the send is
+skipped and logged instead of failing).
+
 ## Testing
 
 ```bash
@@ -99,16 +122,24 @@ pnpm build   # also runs the TypeScript check
 
 Swap `DATABASE_URL` for a hosted Postgres connection string (e.g. a [Neon](https://neon.tech)
 project — the same Postgres dialect as local dev, no schema changes needed), add the same env
-vars to your host (e.g. Vercel), and add the deployed domain's callback URL to the Google OAuth
-client's Authorized redirect URIs.
+vars to your host (e.g. Vercel) plus `CRON_SECRET` (any random string — Vercel sends it
+automatically as a bearer token for its own cron calls once it's set as a project env var) and
+`RESEND_API_KEY`/`FROM_EMAIL`, and add the deployed domain's callback URL to the Google OAuth
+client's Authorized redirect URIs. Also check that the Vercel project's serverless function
+region matches your Postgres provider's region (Project Settings → Functions → Region) —
+cross-region DB round-trips are a common source of slow page loads.
 
 ## Project structure
 
 - `prisma/schema.prisma` — data model
 - `src/lib/auth.ts` — Auth.js config (Google provider, JWT session + refresh)
+- `src/lib/prisma-adapter.ts` — picks the Neon serverless driver or generic `pg`, based on
+  whether `DATABASE_URL` points at Neon or a plain Postgres (e.g. local Docker)
 - `src/lib/scheduling/` — the availability grid + best-time overlap algorithm (pure, unit tested)
 - `src/lib/google/calendar.ts` — Calendar event creation / freebusy
+- `src/lib/email/resend.ts` — recurring-activity reminder emails
 - `src/lib/actions/` — Server Actions (parties, activities, movies)
+- `src/app/api/cron/activity-series/route.ts` — the daily recurrence check (see `vercel.json`)
 - `src/app/` — routes: `/`, `/parties/[partyId]`, `/invite/[code]`,
   `/activities/[activityId]/{availability,results,movies}`
 
@@ -121,3 +152,8 @@ client's Authorized redirect URIs.
   worth hardening if this ever handles a larger or less-trusted user base.
 - Only a contiguous date range is supported per activity (not a set of specific candidate
   dates).
+- Recurring activities only repeat weekly or monthly on a fixed cadence from creation — no
+  custom rules (e.g. "first Friday of the month"), and the daily cron means a new round can
+  land up to ~24h later than its exact anniversary.
+- No nudge emails for people who haven't responded yet on an already-open round — reminders
+  only go out when a *new* recurring round is created.

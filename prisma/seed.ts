@@ -1,11 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { createPrismaAdapter } from "../src/lib/prisma-adapter";
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  adapter: createPrismaAdapter(process.env.DATABASE_URL),
 });
 
 async function main() {

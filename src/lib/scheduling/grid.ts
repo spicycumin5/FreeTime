@@ -1,5 +1,5 @@
 import { addDays, addMinutes, differenceInCalendarDays } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { fromZonedTime, toZonedTime, formatInTimeZone } from "date-fns-tz";
 
 export interface GridSlot {
   start: Date; // UTC instant
@@ -64,4 +64,33 @@ export function generateSlotGrid(params: GridParams): GridSlot[] {
 export function dateOnlyToUtcMidnight(dateOnly: string, timezone: string): Date {
   const [year, month, day] = dateOnly.split("-").map(Number);
   return fromZonedTime(new Date(year, month - 1, day, 0, 0, 0, 0), timezone);
+}
+
+/** Today's calendar date (yyyy-MM-dd) as seen in `timezone`, regardless of the server's own timezone. */
+export function todayInTimezone(timezone: string): string {
+  return formatInTimeZone(new Date(), timezone, "yyyy-MM-dd");
+}
+
+/**
+ * Adds calendar days to a yyyy-MM-dd string, purely as abstract calendar
+ * arithmetic (no timezone attached) — safe to feed the result back into
+ * dateOnlyToUtcMidnight for the real timezone conversion.
+ */
+export function addDaysToDateOnly(dateOnly: string, days: number): string {
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  const result = addDays(new Date(year, month - 1, day), days);
+  const y = result.getFullYear();
+  const m = String(result.getMonth() + 1).padStart(2, "0");
+  const d = String(result.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Day-span between two yyyy-MM-dd strings, as abstract calendar arithmetic. */
+export function differenceInDaysDateOnly(startDateOnly: string, endDateOnly: string): number {
+  const [sy, sm, sd] = startDateOnly.split("-").map(Number);
+  const [ey, em, ed] = endDateOnly.split("-").map(Number);
+  return differenceInCalendarDays(
+    new Date(ey, em - 1, ed),
+    new Date(sy, sm - 1, sd),
+  );
 }

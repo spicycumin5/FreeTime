@@ -1,15 +1,21 @@
 "use server";
 
+import { addMonths, addWeeks } from "date-fns";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requirePartyMembership, requireActivityAccess } from "@/lib/actions/guards";
+import {
+  requirePartyMembership,
+  requireActivityAccess,
+  requirePartyRole,
+  requireSession,
+} from "@/lib/actions/guards";
 import {
   createActivitySchema,
   submitAvailabilitySchema,
   scheduleActivitySchema,
 } from "@/lib/validation/schemas";
-import { dateOnlyToUtcMidnight } from "@/lib/scheduling/grid";
+import { dateOnlyToUtcMidnight, differenceInDaysDateOnly } from "@/lib/scheduling/grid";
 import { createCalendarEvent } from "@/lib/google/calendar";
 
 export async function createActivity(partyId: string, formData: FormData) {
@@ -32,24 +38,75 @@ export async function createActivity(partyId: string, formData: FormData) {
   }
   const data = parsed.data;
 
-  const activity = await prisma.activity.create({
-    data: {
-      partyId,
-      createdById: session.user.id,
-      title: data.title,
-      description: data.description || null,
-      type: data.type,
-      rangeStart: dateOnlyToUtcMidnight(data.rangeStart, data.timezone),
-      rangeEnd: dateOnlyToUtcMidnight(data.rangeEnd, data.timezone),
-      dailyWindowStartMinute: data.dailyWindowStartMinute,
-      dailyWindowEndMinute: data.dailyWindowEndMinute,
-      slotGranularityMinutes: data.slotGranularityMinutes,
-      durationMinutes: data.durationMinutes,
-      timezone: data.timezone,
-    },
-  });
+  const activityFields = {
+    partyId,
+    createdById: session.user.id,
+    title: data.title,
+    description: data.description || null,
+    type: data.type,
+    rangeStart: dateOnlyToUtcMidnight(data.rangeStart, data.timezone),
+    rangeEnd: dateOnlyToUtcMidnight(data.rangeEnd, data.timezone),
+    dailyWindowStartMinute: data.dailyWindowStartMinute,
+    dailyWindowEndMinute: data.dailyWindowEndMinute,
+    slotGranularityMinutes: data.slotGranularityMinutes,
+    durationMinutes: data.durationMinutes,
+    timezone: data.timezone,
+  };
 
-  redirect(`/activities/${activity.id}/availability`);
+  let activityId: string;
+
+  if (data.repeat === "NONE") {
+    const activity = await prisma.activity.create({ data: activityFields });
+    activityId = activity.id;
+  } else {
+    const frequency = data.repeat;
+    const searchWindowDays = Math.max(
+      1,
+      differenceInDaysDateOnly(data.rangeStart, data.rangeEnd) + 1,
+    );
+    const nextRunAt =
+      frequency === "WEEKLY"
+        ? addWeeks(activityFields.rangeStart, 1)
+        : addMonths(activityFields.rangeStart, 1);
+
+    const activity = await prisma.$transaction(async (tx) => {
+      const series = await tx.activitySeries.create({
+        data: {
+          partyId,
+          createdById: session.user.id,
+          title: data.title,
+          description: data.description || null,
+          type: data.type,
+          dailyWindowStartMinute: data.dailyWindowStartMinute,
+          dailyWindowEndMinute: data.dailyWindowEndMinute,
+          slotGranularityMinutes: data.slotGranularityMinutes,
+          durationMinutes: data.durationMinutes,
+          timezone: data.timezone,
+          searchWindowDays,
+          frequency,
+          nextRunAt,
+        },
+      });
+      return tx.activity.create({ data: { ...activityFields, seriesId: series.id } });
+    });
+    activityId = activity.id;
+  }
+
+  redirect(`/activities/${activityId}/availability`);
+}
+
+export async function stopActivitySeries(seriesId: string) {
+  const session = await requireSession();
+
+  const series = await prisma.activitySeries.findUnique({ where: { id: seriesId } });
+  if (!series) throw new Error("Recurring series not found.");
+
+  if (series.createdById !== session.user.id) {
+    await requirePartyRole(series.partyId, "OWNER");
+  }
+
+  await prisma.activitySeries.update({ where: { id: seriesId }, data: { active: false } });
+  revalidatePath(`/parties/${series.partyId}`);
 }
 
 export async function submitAvailability(input: {

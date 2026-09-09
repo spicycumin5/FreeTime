@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { requirePartyMembership } from "@/lib/actions/guards";
 import { InviteLink } from "@/components/parties/invite-link";
 import { NewActivityForm } from "@/components/activities/new-activity-form";
+import { StopSeriesButton } from "@/components/activities/stop-series-button";
+import { LocalTime } from "@/components/local-time";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,16 +23,22 @@ export default async function PartyPage({
   params: Promise<{ partyId: string }>;
 }) {
   const { partyId } = await params;
-  await requirePartyMembership(partyId);
+  const { session, membership } = await requirePartyMembership(partyId);
 
   const party = await prisma.party.findUnique({
     where: { id: partyId },
     include: {
       members: { include: { user: true }, orderBy: { joinedAt: "asc" } },
       activities: { orderBy: { createdAt: "desc" } },
+      activitySeries: { where: { active: true }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!party) notFound();
+
+  const canManageSeries = (createdById: string) =>
+    createdById === session.user.id || membership.role === "OWNER";
+
+  const FREQUENCY_LABEL: Record<string, string> = { WEEKLY: "Weekly", MONTHLY: "Monthly" };
 
   return (
     <div className="flex flex-col gap-8">
@@ -85,6 +93,30 @@ export default async function PartyPage({
           </div>
         )}
       </div>
+
+      {party.activitySeries.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recurring activities</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {party.activitySeries.map((series) => (
+              <div key={series.id} className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">{series.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {FREQUENCY_LABEL[series.frequency]} &middot; next round starts{" "}
+                    <LocalTime iso={series.nextRunAt.toISOString()} format="MMM d, yyyy" />
+                  </p>
+                </div>
+                {canManageSeries(series.createdById) && (
+                  <StopSeriesButton seriesId={series.id} />
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

@@ -126,6 +126,24 @@ export function NewActivityForm({ partyId }: { partyId: string }) {
       </div>
       {dateRangeError && <p className="text-sm text-destructive">{dateRangeError}</p>}
 
+      <div className="grid gap-2">
+        <Label htmlFor="repeat">Repeat</Label>
+        <Select name="repeat" defaultValue="NONE">
+          <SelectTrigger id="repeat" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="NONE">Doesn&apos;t repeat</SelectItem>
+            <SelectItem value="WEEKLY">Weekly</SelectItem>
+            <SelectItem value="MONTHLY">Monthly</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Each time it repeats, a fresh round starts automatically and everyone gets emailed
+          a reminder to fill in availability.
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="dailyWindowStart">Earliest time each day</Label>

@@ -16,6 +16,7 @@ export const createActivitySchema = z
     slotGranularityMinutes: z.coerce.number().int().min(15).max(240).default(30),
     durationMinutes: z.coerce.number().int().min(15).max(24 * 60).default(120),
     timezone: z.string().min(1),
+    repeat: z.enum(["NONE", "WEEKLY", "MONTHLY"]).default("NONE"),
   })
   .refine((data) => data.rangeStart <= data.rangeEnd, {
     message: "End date must be on or after the start date",

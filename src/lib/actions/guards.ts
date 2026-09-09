@@ -20,6 +20,15 @@ export async function requirePartyMembership(partyId: string) {
   return { session, membership };
 }
 
+/** Like requirePartyMembership, but also requires the given role (e.g. OWNER). */
+export async function requirePartyRole(partyId: string, role: "OWNER" | "MEMBER") {
+  const { session, membership } = await requirePartyMembership(partyId);
+  if (membership.role !== role) {
+    throw new Error(`Only a party ${role.toLowerCase()} can do that.`);
+  }
+  return { session, membership };
+}
+
 export async function requireActivityAccess(activityId: string) {
   const session = await requireSession();
 

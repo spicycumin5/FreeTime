@@ -44,6 +44,7 @@ export default async function ActivityOverviewPage({
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{full.status.replaceAll("_", " ")}</Badge>
+          {full.seriesId && <Badge variant="outline">Part of a recurring series</Badge>}
           <span className="text-sm text-muted-foreground">
             {full._count.availabilityResponses} of {memberCount} responded
           </span>
