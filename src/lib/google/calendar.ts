@@ -1,82 +1,29 @@
-import { google } from "googleapis";
-
-export interface CreateCalendarEventInput {
-  accessToken: string;
+export interface BuildGoogleCalendarLinkInput {
   title: string;
   description?: string;
   start: Date;
   end: Date;
-  timezone: string;
   attendeeEmails: string[];
 }
 
-export interface CreateCalendarEventResult {
-  googleEventId: string;
-  googleCalendarLink: string | null;
+function toGoogleCalendarUtc(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 }
 
 /**
- * Creates a real event on the caller's primary Google Calendar with the party as attendees.
- * sendUpdates defaults to "all" so Google emails invites; set SKIP_CALENDAR_SEND=true in dev
- * to use "none" instead and avoid notifying real people while testing the flow.
+ * Builds a Google Calendar "add event" link pre-filled with the activity's details.
+ * Each party member clicks it to add the event to their own calendar — this avoids
+ * needing the sensitive calendar.events OAuth scope (and the Google verification
+ * review that comes with it) just to create one event on the organizer's behalf.
  */
-export async function createCalendarEvent(
-  input: CreateCalendarEventInput,
-): Promise<CreateCalendarEventResult> {
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: input.accessToken });
-
-  const calendar = google.calendar({ version: "v3", auth });
-
-  const sendUpdates = process.env.SKIP_CALENDAR_SEND === "true" ? "none" : "all";
-
-  const response = await calendar.events.insert({
-    calendarId: "primary",
-    sendUpdates,
-    requestBody: {
-      summary: input.title,
-      description: input.description,
-      start: { dateTime: input.start.toISOString(), timeZone: input.timezone },
-      end: { dateTime: input.end.toISOString(), timeZone: input.timezone },
-      attendees: input.attendeeEmails.map((email) => ({ email })),
-    },
+export function buildGoogleCalendarLink(input: BuildGoogleCalendarLinkInput): string {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: input.title,
+    dates: `${toGoogleCalendarUtc(input.start)}/${toGoogleCalendarUtc(input.end)}`,
   });
+  if (input.description) params.set("details", input.description);
+  if (input.attendeeEmails.length > 0) params.set("add", input.attendeeEmails.join(","));
 
-  if (!response.data.id) {
-    throw new Error("Google Calendar did not return an event id");
-  }
-
-  return {
-    googleEventId: response.data.id,
-    googleCalendarLink: response.data.htmlLink ?? null,
-  };
-}
-
-export interface FreeBusyQueryInput {
-  accessToken: string;
-  timeMin: Date;
-  timeMax: Date;
-}
-
-/** Returns the caller's busy intervals in the given range. Used by the (post-v1) freebusy prefill. */
-export async function queryFreeBusy(
-  input: FreeBusyQueryInput,
-): Promise<{ start: Date; end: Date }[]> {
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: input.accessToken });
-
-  const calendar = google.calendar({ version: "v3", auth });
-
-  const response = await calendar.freebusy.query({
-    requestBody: {
-      timeMin: input.timeMin.toISOString(),
-      timeMax: input.timeMax.toISOString(),
-      items: [{ id: "primary" }],
-    },
-  });
-
-  const busy = response.data.calendars?.primary?.busy ?? [];
-  return busy
-    .filter((b) => b.start && b.end)
-    .map((b) => ({ start: new Date(b.start!), end: new Date(b.end!) }));
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }

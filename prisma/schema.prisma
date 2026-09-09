@@ -213,8 +213,7 @@ model ScheduledEvent {
   activityId         String   @unique
   chosenStart        DateTime
   chosenEnd          DateTime
-  googleEventId      String
-  googleCalendarLink String?
+  googleCalendarLink String
   createdById        String
   createdAt          DateTime @default(now())
 

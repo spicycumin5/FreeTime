@@ -1,23 +1,23 @@
 # Free Time
 
 Propose a group activity, have everyone in the party mark when they're free across a date
-range, and get the best overlapping time scheduled straight to Google Calendar with invites
-sent to the whole group. Movie-night activities also get a simple suggest-and-vote list for
-picking what to watch (via TMDB search). Activities can also repeat weekly/monthly, spawning a
-fresh round automatically and emailing the party a reminder each time.
+range, and get the best overlapping time — then everyone adds it to their own Google Calendar
+with one click. Movie-night activities also get a simple suggest-and-vote list for picking what
+to watch (via TMDB search). Activities can also repeat weekly/monthly, spawning a fresh round
+automatically and emailing the party a reminder each time.
 
 ## Stack
 
 Next.js (App Router) + TypeScript, Prisma + PostgreSQL (Neon in production, via its serverless
-driver), Auth.js (Google sign-in, reused for Calendar OAuth), Tailwind + shadcn/ui, Zod,
-date-fns / date-fns-tz, Resend (reminder emails), Vercel Cron (recurrence), Vitest.
+driver), Auth.js (Google sign-in), Tailwind + shadcn/ui, Zod, date-fns / date-fns-tz, Resend
+(reminder emails), Vercel Cron (recurrence), Vitest.
 
 ## Prerequisites
 
 - Node.js 20+, pnpm (`npm install -g pnpm` if you don't have it)
 - Docker, for a local Postgres instance (or point `DATABASE_URL` at a hosted Postgres like
   [Neon](https://neon.tech) instead)
-- A Google Cloud project with the Calendar API enabled (see below)
+- A Google Cloud project for Google sign-in (see below)
 - A free [TMDB](https://www.themoviedb.org/settings/api) API key, for movie search/posters
 - A free [Resend](https://resend.com) account + verified sending domain, for recurring-activity
   reminder emails (optional — everything else works without it; reminders just get skipped and
@@ -25,48 +25,16 @@ date-fns / date-fns-tz, Resend (reminder emails), Vercel Cron (recurrence), Vite
 
 ## Google Cloud setup (one-time, manual)
 
-1. Create a Google Cloud project and enable the **Google Calendar API**
-   (APIs & Services → Library).
-2. Configure the **OAuth consent screen**: External user type, add these scopes:
-   - `openid`, `email`, `profile`
-   - `https://www.googleapis.com/auth/calendar.events`
-   - `https://www.googleapis.com/auth/calendar.freebusy`
-
-   While the app is unverified ("Testing" mode), only up to 100 explicitly-added **test users**
-   (by Google account email) can sign in — add yourself and any friends you want to try it with
-   under "Test users." This is fine for a friend group; going past 100 users or wanting a
-   smoother consent screen requires Google's verification review.
-3. Create **OAuth 2.0 Client ID** credentials (Web application). Authorized redirect URIs:
+1. Configure the **OAuth consent screen**: External user type, with just the default
+   `openid`, `email`, `profile` scopes. The app never requests Calendar access — confirming a
+   time generates a pre-filled "Add to Google Calendar" link that each party member clicks to
+   add the event to their own calendar (see `src/lib/google/calendar.ts`), so there's no
+   sensitive scope and no Google verification review needed even once you publish the app to
+   production ("Audience" page → "Publish app") and let anyone sign in.
+2. Create **OAuth 2.0 Client ID** credentials (Web application). Authorized redirect URIs:
    - `http://localhost:3000/api/auth/callback/google` (local dev)
    - `https://<your-deployed-domain>/api/auth/callback/google` (once deployed)
-4. Copy the Client ID / Client Secret into `.env.local` (see below).
-
-### Submitting for verification (optional — lets anyone sign in without being added as a test user)
-
-The app requests two sensitive Calendar scopes (`calendar.events`, `calendar.freebusy`), so
-going past the 100-test-user limit requires Google's verification review, not just flipping a
-setting. Steps, all in **APIs & Services → OAuth consent screen**:
-
-1. Deploy the app first — verification needs a live homepage URL.
-2. Fill in **App information**: app name, logo (optional), and a support email.
-3. Set **Application home page** to your deployed URL.
-4. Set **Application privacy policy link** to `<your-deployed-domain>/privacy` — the app already
-   ships this page (`src/app/privacy/page.tsx`), linked in the site footer so reviewers can find
-   it from the app itself. Update the `CONTACT_EMAIL` constant at the top of that file if you
-   want a different public contact address than the developer account's email.
-5. Under **Authorized domains**, add your domain. A custom domain is verified via
-   [Google Search Console](https://search.google.com/search-console) (DNS TXT record, or HTML
-   file upload for a URL-prefix property); a bare `vercel.app` subdomain can sometimes be
-   verified the same way via the HTML-file method, but a custom domain is more reliable for
-   this step.
-6. Under **Scopes**, confirm the Calendar scopes and add a short justification for each (why
-   `calendar.events` and `calendar.freebusy` are needed) when prompted.
-7. Submit for verification. Google may ask for a short screen recording showing the OAuth
-   consent flow and how each sensitive scope is used — review typically takes anywhere from a
-   few days to a couple of weeks, sometimes with follow-up questions.
-
-Until verification completes, the app keeps working normally for anyone already added as a
-test user.
+3. Copy the Client ID / Client Secret into `.env.local` (see below).
 
 ## Local setup
 
@@ -112,15 +80,6 @@ manually filling in the grid every time. The seeded members aren't real Google a
 see it in the app: sign in with your real Google account, then visit `/invite/seed-party` to
 join that party — your own availability then combines with the three seeded responses.
 
-### Avoiding real Calendar invites while testing
-
-Confirming a time in the Results tab calls the Google Calendar API and — by default —
-emails every party member a real invite (`sendUpdates: 'all'`). `.env.local` ships with
-`SKIP_CALENDAR_SEND="true"`, which uses `sendUpdates: 'none'` instead, so you can exercise the
-whole scheduling flow without notifying anyone. Only test with `SKIP_CALENDAR_SEND` unset (or
-`false`) against Google accounts you control (your own + a throwaway account), never against
-real friends, until you're confident the flow works.
-
 ### Testing recurring activities locally
 
 A `vercel.json` cron hits `/api/cron/activity-series` once a day in production — that doesn't
@@ -159,11 +118,12 @@ cross-region DB round-trips are a common source of slow page loads.
 ## Project structure
 
 - `prisma/schema.prisma` — data model
-- `src/lib/auth.ts` — Auth.js config (Google provider, JWT session + refresh)
+- `src/lib/auth.ts` — Auth.js config (Google provider, JWT session)
 - `src/lib/prisma-adapter.ts` — picks the Neon serverless driver or generic `pg`, based on
   whether `DATABASE_URL` points at Neon or a plain Postgres (e.g. local Docker)
 - `src/lib/scheduling/` — the availability grid + best-time overlap algorithm (pure, unit tested)
-- `src/lib/google/calendar.ts` — Calendar event creation / freebusy
+- `src/lib/google/calendar.ts` — builds the pre-filled "Add to Google Calendar" link used once
+  a time is confirmed
 - `src/lib/email/resend.ts` — recurring-activity reminder emails
 - `src/lib/actions/` — Server Actions (parties, activities, movies)
 - `src/app/api/cron/activity-series/route.ts` — the daily recurrence check (see `vercel.json`)
@@ -172,11 +132,9 @@ cross-region DB round-trips are a common source of slow page loads.
 
 ## Known v1 limitations / not-yet-built
 
-- No Google Calendar freebusy pre-fill on the availability grid (deferred; `queryFreeBusy` in
-  `lib/google/calendar.ts` is there but unused for now).
-- Access/refresh tokens are stored the way Auth.js's Prisma adapter does by default (not
-  separately encrypted at rest) — a reasonable trade-off for a small trusted friend group, but
-  worth hardening if this ever handles a larger or less-trusted user base.
+- No Google Calendar freebusy pre-fill on the availability grid, and no automatic event
+  creation on anyone's calendar — scheduling produces an "Add to Google Calendar" link per
+  person instead, since the app never requests Calendar OAuth access at all.
 - Only a contiguous date range is supported per activity (not a set of specific candidate
   dates).
 - Recurring activities only repeat weekly or monthly on a fixed cadence from creation — no

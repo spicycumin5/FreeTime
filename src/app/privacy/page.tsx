@@ -5,7 +5,7 @@ export const metadata: Metadata = {
 };
 
 const CONTACT_EMAIL = "hankyumin5@gmail.com";
-const LAST_UPDATED = "September 8, 2026";
+const LAST_UPDATED = "September 9, 2026";
 
 const linkClass = "underline underline-offset-2 hover:text-foreground";
 const h2Class = "mt-6 text-lg font-semibold tracking-tight";
@@ -33,14 +33,6 @@ export default function PrivacyPolicyPage() {
           <code>profile</code> scopes.
         </li>
         <li>
-          <strong className="text-foreground">Google Calendar access:</strong> we request the{" "}
-          <code>calendar.events</code> scope to create an event on your primary Google Calendar
-          (and send invites to the other people in your party) when you confirm a scheduled
-          time. We also request <code>calendar.freebusy</code>, which is reserved for a planned
-          feature to pre-fill your availability from your calendar — it isn&apos;t used by
-          anything yet.
-        </li>
-        <li>
           <strong className="text-foreground">Information you provide directly:</strong> party
           names, activity details (title, description, date range), the availability you mark on
           the grid, and any movie suggestions or votes you submit.
@@ -50,10 +42,12 @@ export default function PrivacyPolicyPage() {
       <h2 className={h2Class}>How we use this information</h2>
       <p className={pClass}>
         We use it only to run the app&apos;s features: matching everyone&apos;s availability,
-        creating the calendar event and invites once a time is confirmed, showing movie search
-        results, and emailing reminders when a recurring activity opens a new round. We
-        don&apos;t sell your data, use it for advertising, or run any analytics or tracking
-        scripts on this site.
+        showing movie search results, and emailing reminders when a recurring activity opens a
+        new round. Once a time is confirmed, we generate a pre-filled &quot;Add to Google
+        Calendar&quot; link for each party member to add the event to their own calendar
+        themselves — the app never creates events or sends invites on your behalf, and never
+        requests access to your Google Calendar. We don&apos;t sell your data, use it for
+        advertising, or run any analytics or tracking scripts on this site.
       </p>
 
       <h2 className={h2Class}>Who can see your information</h2>
@@ -66,8 +60,8 @@ export default function PrivacyPolicyPage() {
       <h2 className={h2Class}>Third-party services we use</h2>
       <ul className={ulClass}>
         <li>
-          <strong className="text-foreground">Google</strong> — sign-in and Calendar event
-          creation, as described above.
+          <strong className="text-foreground">Google</strong> — sign-in only, as described
+          above. We never connect to your Google Calendar.
         </li>
         <li>
           <strong className="text-foreground">The Movie Database (TMDB)</strong> — powers movie

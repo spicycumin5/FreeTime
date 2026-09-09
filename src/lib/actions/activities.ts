@@ -16,7 +16,7 @@ import {
   scheduleActivitySchema,
 } from "@/lib/validation/schemas";
 import { dateOnlyToUtcMidnight, differenceInDaysDateOnly } from "@/lib/scheduling/grid";
-import { createCalendarEvent } from "@/lib/google/calendar";
+import { buildGoogleCalendarLink } from "@/lib/google/calendar";
 
 export async function createActivity(partyId: string, formData: FormData) {
   const { session } = await requirePartyMembership(partyId);
@@ -161,11 +161,6 @@ export async function scheduleActivity(input: {
   if (activity.createdById !== session.user.id) {
     throw new Error("Only the person who proposed this activity can finalize the time.");
   }
-  if (!session.accessToken) {
-    throw new Error(
-      "Your Google session doesn't have a valid access token. Try signing out and back in.",
-    );
-  }
 
   const party = await prisma.party.findUniqueOrThrow({
     where: { id: activity.partyId },
@@ -175,13 +170,11 @@ export async function scheduleActivity(input: {
     .map((m) => m.user.email)
     .filter((email): email is string => Boolean(email));
 
-  const { googleEventId, googleCalendarLink } = await createCalendarEvent({
-    accessToken: session.accessToken,
+  const googleCalendarLink = buildGoogleCalendarLink({
     title: activity.title,
     description: activity.description ?? undefined,
     start: new Date(parsed.data.chosenStart),
     end: new Date(parsed.data.chosenEnd),
-    timezone: activity.timezone,
     attendeeEmails,
   });
 
@@ -191,7 +184,6 @@ export async function scheduleActivity(input: {
         activityId: activity.id,
         chosenStart: new Date(parsed.data.chosenStart),
         chosenEnd: new Date(parsed.data.chosenEnd),
-        googleEventId,
         googleCalendarLink,
         createdById: session.user.id,
       },

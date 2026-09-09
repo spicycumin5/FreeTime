@@ -19,13 +19,13 @@ export function ScheduleButton({
   const router = useRouter();
 
   async function handleClick() {
-    if (!confirm("Create a Google Calendar event and invite the whole party for this time?")) {
+    if (!confirm("Confirm this time for the activity?")) {
       return;
     }
     setPending(true);
     try {
       await scheduleActivity({ activityId, chosenStart, chosenEnd });
-      toast.success("Scheduled! Calendar invites are on their way.");
+      toast.success("Scheduled! Everyone can add it to their own calendar from here.");
       router.push(`/activities/${activityId}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to schedule");

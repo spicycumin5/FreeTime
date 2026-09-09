@@ -75,16 +75,14 @@ export default async function ActivityOverviewPage({
                 format="EEEE, MMM d 'at' h:mm a"
               />
             </p>
-            {full.scheduledEvent.googleCalendarLink && (
-              <a
-                href={full.scheduledEvent.googleCalendarLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm underline underline-offset-2"
-              >
-                View on Google Calendar
-              </a>
-            )}
+            <a
+              href={full.scheduledEvent.googleCalendarLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm underline underline-offset-2"
+            >
+              Add to Google Calendar
+            </a>
           </div>
         )}
       </div>
