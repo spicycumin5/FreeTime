@@ -3,8 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireActivityAccess } from "@/lib/actions/guards";
 import { ActivityNav } from "@/components/activities/activity-nav";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { LocalRange, LocalTime, ViewerTimezoneNote } from "@/components/local-time";
+import { generateSlotGrid } from "@/lib/scheduling/grid";
 
 export default async function ActivityOverviewPage({
   params,
@@ -27,6 +27,10 @@ export default async function ActivityOverviewPage({
 
   const memberCount = await prisma.partyMember.count({ where: { partyId: full.partyId } });
 
+  const grid = generateSlotGrid(full);
+  const searchWindowStart = grid[0]?.start;
+  const searchWindowEnd = grid[grid.length - 1]?.end;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -45,21 +49,30 @@ export default async function ActivityOverviewPage({
           </span>
         </div>
 
-        <p className="text-sm text-muted-foreground">
-          Searching {format(full.rangeStart, "MMM d")}&ndash;{format(full.rangeEnd, "MMM d")},{" "}
-          {minutesToTime(full.dailyWindowStartMinute)}&ndash;
-          {minutesToTime(full.dailyWindowEndMinute)} ({full.timezone})
-        </p>
+        {searchWindowStart && searchWindowEnd && full.status !== "SCHEDULED" && (
+          <div className="text-sm text-muted-foreground">
+            <p>
+              Searching{" "}
+              <LocalRange
+                startIso={searchWindowStart.toISOString()}
+                endIso={searchWindowEnd.toISOString()}
+                dateFormat="MMM d, h:mm a"
+              />
+            </p>
+            <p className="text-xs">
+              <ViewerTimezoneNote />
+            </p>
+          </div>
+        )}
 
         {full.scheduledEvent && (
           <div className="rounded-md border bg-accent/50 p-4">
             <p className="font-medium">
               Scheduled for{" "}
-              {formatInTimeZone(
-                full.scheduledEvent.chosenStart,
-                full.timezone,
-                "EEEE, MMM d 'at' h:mm a",
-              )}
+              <LocalTime
+                iso={full.scheduledEvent.chosenStart.toISOString()}
+                format="EEEE, MMM d 'at' h:mm a"
+              />
             </p>
             {full.scheduledEvent.googleCalendarLink && (
               <a
@@ -76,12 +89,4 @@ export default async function ActivityOverviewPage({
       </div>
     </div>
   );
-}
-
-function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }

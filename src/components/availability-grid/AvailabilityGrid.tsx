@@ -2,21 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { formatInTimeZone } from "date-fns-tz";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { submitAvailability } from "@/lib/actions/activities";
+import { useViewerTimezone } from "@/components/local-time";
 
 export interface GridCell {
   slotIndex: number;
   startIso: string;
   endIso: string;
-  timeLabel: string;
   initiallySelected: boolean;
 }
 
 export interface GridDay {
   dayIndex: number;
-  dateLabel: string;
   cells: GridCell[];
 }
 
@@ -41,8 +41,20 @@ export function AvailabilityGrid({
   );
   const [dragMode, setDragMode] = useState<"select" | "deselect" | null>(null);
   const [saving, setSaving] = useState(false);
+  const tz = useViewerTimezone();
 
-  const timeLabels = useMemo(() => days[0]?.cells.map((c) => c.timeLabel) ?? [], [days]);
+  const timeLabels = useMemo(
+    () =>
+      tz ? (days[0]?.cells.map((c) => formatInTimeZone(new Date(c.startIso), tz, "h:mm a")) ?? []) : [],
+    [days, tz],
+  );
+  const dayLabels = useMemo(
+    () =>
+      tz
+        ? days.map((day) => formatInTimeZone(new Date(day.cells[0].startIso), tz, "EEE M/d"))
+        : [],
+    [days, tz],
+  );
 
   function toggleCell(dayIndex: number, slotIndex: number, forceMode?: "select" | "deselect") {
     const key = cellKey(dayIndex, slotIndex);
@@ -84,6 +96,10 @@ export function AvailabilityGrid({
     return <p className="text-muted-foreground">This activity has no date range to show.</p>;
   }
 
+  if (!tz) {
+    return <p className="text-muted-foreground">Loading grid...</p>;
+  }
+
   return (
     <div className="flex flex-col gap-4" onMouseUp={() => setDragMode(null)}>
       <div className="overflow-x-auto rounded-md border select-none">
@@ -91,9 +107,9 @@ export function AvailabilityGrid({
           <thead>
             <tr>
               <th className="w-20 border-b p-2 text-left text-xs text-muted-foreground">Time</th>
-              {days.map((day) => (
+              {days.map((day, i) => (
                 <th key={day.dayIndex} className="border-b border-l p-2 text-center font-medium">
-                  {day.dateLabel}
+                  {dayLabels[i]}
                 </th>
               ))}
             </tr>

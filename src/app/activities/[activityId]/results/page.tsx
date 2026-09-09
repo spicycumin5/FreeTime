@@ -4,7 +4,7 @@ import { ActivityNav } from "@/components/activities/activity-nav";
 import { computeBestTimes } from "@/lib/scheduling/bestTime";
 import { ScheduleButton } from "@/components/activities/schedule-button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatInTimeZone } from "date-fns-tz";
+import { LocalRange, ViewerTimezoneNote } from "@/components/local-time";
 
 export default async function ResultsPage({
   params,
@@ -48,6 +48,12 @@ export default async function ResultsPage({
 
       <ActivityNav activityId={activity.id} showMovies={activity.type === "MOVIE_NIGHT"} />
 
+      {responses.length > 0 && activity.status !== "SCHEDULED" && bestTimes.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          <ViewerTimezoneNote />
+        </p>
+      )}
+
       {responses.length === 0 ? (
         <p className="text-muted-foreground">No one has submitted availability yet.</p>
       ) : activity.status === "SCHEDULED" ? (
@@ -65,13 +71,11 @@ export default async function ResultsPage({
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
                 <div>
                   <p className="font-medium">
-                    {formatInTimeZone(
-                      window.start,
-                      activity.timezone,
-                      "EEEE, MMM d, h:mm a",
-                    )}
-                    {" – "}
-                    {formatInTimeZone(window.end, activity.timezone, "h:mm a")}
+                    <LocalRange
+                      startIso={window.start.toISOString()}
+                      endIso={window.end.toISOString()}
+                      dateFormat="EEEE, MMM d, h:mm a"
+                    />
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {window.score} of {members.length} free:{" "}
