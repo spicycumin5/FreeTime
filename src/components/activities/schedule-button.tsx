@@ -36,7 +36,7 @@ export function ScheduleButton({
 
   return (
     <Button onClick={handleClick} disabled={pending}>
-      {pending ? "Scheduling..." : "Confirm this time"}
+      {pending ? "Scheduling…" : "Confirm this time"}
     </Button>
   );
 }

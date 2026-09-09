@@ -125,7 +125,7 @@ export function AvailabilityGrid({
   }
 
   if (!tz) {
-    return <p className="text-muted-foreground">Loading grid...</p>;
+    return <p className="text-muted-foreground">Loading grid…</p>;
   }
 
   return (
@@ -189,7 +189,7 @@ export function AvailabilityGrid({
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save availability"}
+          {saving ? "Saving…" : "Save availability"}
         </Button>
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="inline-block h-3 w-3 rounded-sm bg-emerald-500/80" /> Free

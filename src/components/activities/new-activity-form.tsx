@@ -75,7 +75,7 @@ export function NewActivityForm({ partyId }: { partyId: string }) {
 
       <div className="grid gap-2">
         <Label htmlFor="title">Title</Label>
-        <Input id="title" name="title" placeholder="Movie Night" required maxLength={150} />
+        <Input id="title" name="title" placeholder="e.g. Movie Night" required maxLength={150} />
       </div>
 
       <div className="grid gap-2">
@@ -206,7 +206,7 @@ export function NewActivityForm({ partyId }: { partyId: string }) {
       </div>
 
       <Button type="submit" disabled={submitting || !!formError}>
-        {submitting ? "Creating..." : "Create activity"}
+        {submitting ? "Creating…" : "Create activity"}
       </Button>
     </form>
   );

@@ -46,7 +46,13 @@ export function MovieList({ items }: { items: MovieListItem[] }) {
           <CardContent className="flex items-center gap-3 py-3">
             {item.posterUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.posterUrl} alt="" className="h-16 w-11 rounded object-cover" />
+              <img
+                src={item.posterUrl}
+                alt={`${item.title} poster`}
+                width={44}
+                height={64}
+                className="h-16 w-11 shrink-0 rounded object-cover"
+              />
             )}
             <div className="min-w-0 flex-1">
               <p className="font-medium break-words">{item.title}</p>

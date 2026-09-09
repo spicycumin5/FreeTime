@@ -75,7 +75,7 @@ export function MovieSearch({ activityId }: { activityId: string }) {
       <div className="flex flex-wrap gap-2">
         <Input
           className="min-w-0 flex-1"
-          placeholder="Search for a movie to suggest..."
+          placeholder="Search for a movie to suggest…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -89,7 +89,7 @@ export function MovieSearch({ activityId }: { activityId: string }) {
           Add as typed
         </Button>
       </div>
-      {searching && <p className="text-xs text-muted-foreground">Searching...</p>}
+      {searching && <p className="text-xs text-muted-foreground">Searching…</p>}
       {results.length > 0 && (
         <div className="flex flex-col divide-y rounded-md border">
           {results.map((movie) => (
@@ -97,7 +97,13 @@ export function MovieSearch({ activityId }: { activityId: string }) {
               <div className="flex min-w-0 items-center gap-3">
                 {movie.posterUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={movie.posterUrl} alt="" className="h-12 w-8 shrink-0 rounded object-cover" />
+                  <img
+                    src={movie.posterUrl}
+                    alt={`${movie.title} poster`}
+                    width={32}
+                    height={48}
+                    className="h-12 w-8 shrink-0 rounded object-cover"
+                  />
                 )}
                 <span className="truncate text-sm">
                   {movie.title} {movie.year && <span className="text-muted-foreground">({movie.year})</span>}

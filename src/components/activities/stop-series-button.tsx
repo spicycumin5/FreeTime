@@ -28,7 +28,7 @@ export function StopSeriesButton({ seriesId }: { seriesId: string }) {
 
   return (
     <Button variant="outline" size="sm" onClick={handleClick} disabled={pending}>
-      {pending ? "Stopping..." : "Stop"}
+      {pending ? "Stopping…" : "Stop"}
     </Button>
   );
 }
