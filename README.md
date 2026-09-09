@@ -1,4 +1,4 @@
-# Movie Night
+# Free Time
 
 Propose a group activity, have everyone in the party mark when they're free across a date
 range, and get the best overlapping time scheduled straight to Google Calendar with invites
