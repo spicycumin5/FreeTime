@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
@@ -38,6 +39,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <SiteHeader />
           <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">{children}</div>
+          <footer className="border-t py-4">
+            <div className="mx-auto flex max-w-4xl justify-center px-4 text-sm text-muted-foreground">
+              <Link href="/privacy" className="hover:text-foreground hover:underline">
+                Privacy Policy
+              </Link>
+            </div>
+          </footer>
           <Toaster />
         </ThemeProvider>
       </body>

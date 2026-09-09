@@ -41,6 +41,33 @@ date-fns / date-fns-tz, Resend (reminder emails), Vercel Cron (recurrence), Vite
    - `https://<your-deployed-domain>/api/auth/callback/google` (once deployed)
 4. Copy the Client ID / Client Secret into `.env.local` (see below).
 
+### Submitting for verification (optional — lets anyone sign in without being added as a test user)
+
+The app requests two sensitive Calendar scopes (`calendar.events`, `calendar.freebusy`), so
+going past the 100-test-user limit requires Google's verification review, not just flipping a
+setting. Steps, all in **APIs & Services → OAuth consent screen**:
+
+1. Deploy the app first — verification needs a live homepage URL.
+2. Fill in **App information**: app name, logo (optional), and a support email.
+3. Set **Application home page** to your deployed URL.
+4. Set **Application privacy policy link** to `<your-deployed-domain>/privacy` — the app already
+   ships this page (`src/app/privacy/page.tsx`), linked in the site footer so reviewers can find
+   it from the app itself. Update the `CONTACT_EMAIL` constant at the top of that file if you
+   want a different public contact address than the developer account's email.
+5. Under **Authorized domains**, add your domain. A custom domain is verified via
+   [Google Search Console](https://search.google.com/search-console) (DNS TXT record, or HTML
+   file upload for a URL-prefix property); a bare `vercel.app` subdomain can sometimes be
+   verified the same way via the HTML-file method, but a custom domain is more reliable for
+   this step.
+6. Under **Scopes**, confirm the Calendar scopes and add a short justification for each (why
+   `calendar.events` and `calendar.freebusy` are needed) when prompted.
+7. Submit for verification. Google may ask for a short screen recording showing the OAuth
+   consent flow and how each sensitive scope is used — review typically takes anywhere from a
+   few days to a couple of weeks, sometimes with follow-up questions.
+
+Until verification completes, the app keeps working normally for anyone already added as a
+test user.
+
 ## Local setup
 
 ```bash
