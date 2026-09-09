@@ -22,15 +22,16 @@ export function ActivityNav({
   ];
 
   return (
-    <nav className="flex gap-1 border-b">
+    <nav className="flex gap-1 overflow-x-auto border-b" aria-label="Activity sections">
       {tabs.map((tab) => {
         const active = pathname === tab.href;
         return (
           <Link
             key={tab.href}
             href={tab.href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              "shrink-0 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
               active
                 ? "border-foreground text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",

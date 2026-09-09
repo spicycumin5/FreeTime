@@ -72,13 +72,20 @@ export function MovieSearch({ activityId }: { activityId: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Input
+          className="min-w-0 flex-1"
           placeholder="Search for a movie to suggest..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <Button type="button" variant="outline" disabled={!query.trim() || adding === -1} onClick={handleManualAdd}>
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          disabled={!query.trim() || adding === -1}
+          onClick={handleManualAdd}
+        >
           Add as typed
         </Button>
       </div>
@@ -87,17 +94,18 @@ export function MovieSearch({ activityId }: { activityId: string }) {
         <div className="flex flex-col divide-y rounded-md border">
           {results.map((movie) => (
             <div key={movie.tmdbId} className="flex items-center justify-between gap-3 p-2">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 {movie.posterUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={movie.posterUrl} alt="" className="h-12 w-8 rounded object-cover" />
+                  <img src={movie.posterUrl} alt="" className="h-12 w-8 shrink-0 rounded object-cover" />
                 )}
-                <span className="text-sm">
+                <span className="truncate text-sm">
                   {movie.title} {movie.year && <span className="text-muted-foreground">({movie.year})</span>}
                 </span>
               </div>
               <Button
                 type="button"
+                className="shrink-0"
                 size="sm"
                 variant="outline"
                 disabled={adding === movie.tmdbId}

@@ -96,7 +96,7 @@ export function NewActivityForm({ partyId }: { partyId: string }) {
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="rangeStart">Search from</Label>
           <Input
@@ -144,7 +144,7 @@ export function NewActivityForm({ partyId }: { partyId: string }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="dailyWindowStart">Earliest time each day</Label>
           <Input
@@ -175,7 +175,7 @@ export function NewActivityForm({ partyId }: { partyId: string }) {
         Picking 12:00 AM for the latest time means midnight at the end of the day.
       </p>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="durationMinutes">Activity length</Label>
           <Select name="durationMinutes" defaultValue="120">

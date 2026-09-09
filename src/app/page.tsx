@@ -12,7 +12,7 @@ export default async function Home() {
   if (!session?.user) {
     return (
       <div className="flex flex-col items-center gap-4 py-24 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">Movie Night</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Free Time</h1>
         <p className="max-w-md text-muted-foreground">
           Propose an activity, let everyone mark when they&apos;re free, and get the best
           overlapping time scheduled straight to Google Calendar. Sign in to get started.

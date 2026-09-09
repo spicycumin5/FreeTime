@@ -78,9 +78,9 @@ export default async function PartyPage({
             {party.activities.map((activity) => (
               <Link key={activity.id} href={`/activities/${activity.id}`}>
                 <Card className="transition-colors hover:bg-accent">
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div>
-                      <p className="font-medium">{activity.title}</p>
+                  <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{activity.title}</p>
                       <p className="text-sm text-muted-foreground">
                         {activity.type === "MOVIE_NIGHT" ? "Movie night" : "Activity"}
                       </p>
@@ -101,9 +101,9 @@ export default async function PartyPage({
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {party.activitySeries.map((series) => (
-              <div key={series.id} className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium">{series.title}</p>
+              <div key={series.id} className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{series.title}</p>
                   <p className="text-sm text-muted-foreground">
                     {FREQUENCY_LABEL[series.frequency]} &middot; next round starts{" "}
                     <LocalTime iso={series.nextRunAt.toISOString()} format="MMM d, yyyy" />

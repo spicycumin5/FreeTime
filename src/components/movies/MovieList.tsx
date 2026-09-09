@@ -48,8 +48,8 @@ export function MovieList({ items }: { items: MovieListItem[] }) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={item.posterUrl} alt="" className="h-16 w-11 rounded object-cover" />
             )}
-            <div className="flex-1">
-              <p className="font-medium">{item.title}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium break-words">{item.title}</p>
               <p className="text-xs text-muted-foreground">Suggested by {item.suggestedByName}</p>
             </div>
             <div className="flex items-center gap-1">

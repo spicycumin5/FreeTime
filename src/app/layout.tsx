@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Movie Night",
+  title: "Free Time",
   description: "Find a time that works for everyone, then lock it in.",
 };
 

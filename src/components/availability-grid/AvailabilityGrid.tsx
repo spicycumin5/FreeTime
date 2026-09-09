@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { formatInTimeZone } from "date-fns-tz";
 import { cn } from "cn";
@@ -39,7 +39,8 @@ export function AvailabilityGrid({
         ),
       ),
   );
-  const [dragMode, setDragMode] = useState<"select" | "deselect" | null>(null);
+  const dragModeRef = useRef<"select" | "deselect" | null>(null);
+  const lastPointerCellRef = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
   const tz = useViewerTimezone();
 
@@ -67,16 +68,43 @@ export function AvailabilityGrid({
     });
   }
 
-  function handleMouseDown(dayIndex: number, slotIndex: number) {
+  // Pointer Events (not mouse-only) so drag-select works with touch, mouse, and pen alike.
+  // Rather than relying on per-cell enter events (which touch never fires while dragging),
+  // one pointermove handler on the table looks up whatever cell is currently under the
+  // pointer via elementFromPoint — that works the same way regardless of input type.
+  function endDrag() {
+    dragModeRef.current = null;
+    lastPointerCellRef.current = null;
+  }
+
+  function handlePointerDown(e: React.PointerEvent, dayIndex: number, slotIndex: number) {
+    e.preventDefault();
     const key = cellKey(dayIndex, slotIndex);
     const mode = selected.has(key) ? "deselect" : "select";
-    setDragMode(mode);
+    dragModeRef.current = mode;
+    lastPointerCellRef.current = key;
     toggleCell(dayIndex, slotIndex, mode);
   }
 
-  function handleMouseEnter(dayIndex: number, slotIndex: number) {
-    if (!dragMode) return;
-    toggleCell(dayIndex, slotIndex, dragMode);
+  function handlePointerMove(e: React.PointerEvent) {
+    const mode = dragModeRef.current;
+    if (!mode) return;
+    const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const cellEl = target?.closest<HTMLElement>("[data-day-index]");
+    if (!cellEl) return;
+    const dayIndex = Number(cellEl.dataset.dayIndex);
+    const slotIndex = Number(cellEl.dataset.slotIndex);
+    const key = cellKey(dayIndex, slotIndex);
+    if (key === lastPointerCellRef.current) return;
+    lastPointerCellRef.current = key;
+    toggleCell(dayIndex, slotIndex, mode);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent, dayIndex: number, slotIndex: number) {
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      toggleCell(dayIndex, slotIndex);
+    }
   }
 
   async function handleSave() {
@@ -101,14 +129,25 @@ export function AvailabilityGrid({
   }
 
   return (
-    <div className="flex flex-col gap-4" onMouseUp={() => setDragMode(null)}>
-      <div className="overflow-x-auto rounded-md border select-none">
-        <table className="w-full border-collapse text-sm">
+    <div className="flex flex-col gap-4">
+      <div className="overflow-x-auto rounded-md border">
+        <table
+          className="w-full border-collapse text-sm select-none"
+          onPointerMove={handlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onPointerLeave={endDrag}
+        >
           <thead>
             <tr>
-              <th className="w-20 border-b p-2 text-left text-xs text-muted-foreground">Time</th>
+              <th className="w-16 border-b p-2 text-left text-xs text-muted-foreground sm:w-20">
+                Time
+              </th>
               {days.map((day, i) => (
-                <th key={day.dayIndex} className="border-b border-l p-2 text-center font-medium">
+                <th
+                  key={day.dayIndex}
+                  className="min-w-11 border-b border-l p-2 text-center text-xs font-medium sm:min-w-16 sm:text-sm"
+                >
                   {dayLabels[i]}
                 </th>
               ))}
@@ -120,20 +159,26 @@ export function AvailabilityGrid({
                 <td className="border-b p-1 text-xs text-muted-foreground whitespace-nowrap">
                   {rowIndex % 2 === 0 ? label : ""}
                 </td>
-                {days.map((day) => {
+                {days.map((day, i) => {
                   const cell = day.cells[rowIndex];
                   const key = cellKey(day.dayIndex, cell.slotIndex);
                   const isSelected = selected.has(key);
                   return (
-                    <td
-                      key={key}
-                      onMouseDown={() => handleMouseDown(day.dayIndex, cell.slotIndex)}
-                      onMouseEnter={() => handleMouseEnter(day.dayIndex, cell.slotIndex)}
-                      className={cn(
-                        "h-6 cursor-pointer border-b border-l transition-colors",
-                        isSelected ? "bg-emerald-500/80 hover:bg-emerald-500" : "hover:bg-accent",
-                      )}
-                    />
+                    <td key={key} className="border-b border-l p-0">
+                      <button
+                        type="button"
+                        data-day-index={day.dayIndex}
+                        data-slot-index={cell.slotIndex}
+                        aria-pressed={isSelected}
+                        aria-label={`${dayLabels[i]}, ${label}, ${isSelected ? "free" : "not marked free"}`}
+                        onPointerDown={(e) => handlePointerDown(e, day.dayIndex, cell.slotIndex)}
+                        onKeyDown={(e) => handleKeyDown(e, day.dayIndex, cell.slotIndex)}
+                        className={cn(
+                          "h-8 w-full cursor-pointer touch-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring sm:h-7",
+                          isSelected ? "bg-emerald-500/80 hover:bg-emerald-500" : "hover:bg-accent",
+                        )}
+                      />
+                    </td>
                   );
                 })}
               </tr>
