@@ -1,69 +1,78 @@
-import Image from "next/image";
+import Link from "next/link";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { createParty } from "@/lib/actions/parties";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+
+  if (!session?.user) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-24 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight">Movie Night</h1>
+        <p className="max-w-md text-muted-foreground">
+          Propose an activity, let everyone mark when they&apos;re free, and get the best
+          overlapping time scheduled straight to Google Calendar. Sign in to get started.
+        </p>
+      </div>
+    );
+  }
+
+  const memberships = await prisma.partyMember.findMany({
+    where: { userId: session.user.id },
+    include: {
+      party: {
+        include: { _count: { select: { members: true, activities: true } } },
+      },
+    },
+    orderBy: { joinedAt: "desc" },
+  });
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Your parties</h1>
+        <p className="text-muted-foreground">Groups you schedule activities with.</p>
+      </div>
+
+      {memberships.length === 0 ? (
+        <p className="text-muted-foreground">
+          You&apos;re not in any parties yet. Create one below.
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {memberships.map((m) => (
+            <Link key={m.party.id} href={`/parties/${m.party.id}`}>
+              <Card className="transition-colors hover:bg-accent">
+                <CardHeader>
+                  <CardTitle>{m.party.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  {m.party._count.members} member
+                  {m.party._count.members === 1 ? "" : "s"} &middot;{" "}
+                  {m.party._count.activities} activit
+                  {m.party._count.activities === 1 ? "y" : "ies"}
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      )}
+
+      <Card className="max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Create a party</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={createParty} className="flex gap-2">
+            <Input name="name" placeholder="e.g. Friday Regulars" required maxLength={100} />
+            <Button type="submit">Create</Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

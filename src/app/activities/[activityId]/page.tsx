@@ -1,0 +1,87 @@
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { requireActivityAccess } from "@/lib/actions/guards";
+import { ActivityNav } from "@/components/activities/activity-nav";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+
+export default async function ActivityOverviewPage({
+  params,
+}: {
+  params: Promise<{ activityId: string }>;
+}) {
+  const { activityId } = await params;
+  const { activity } = await requireActivityAccess(activityId);
+
+  const full = await prisma.activity.findUnique({
+    where: { id: activity.id },
+    include: {
+      party: true,
+      scheduledEvent: true,
+      availabilityResponses: { select: { userId: true } },
+      _count: { select: { availabilityResponses: true } },
+    },
+  });
+  if (!full) notFound();
+
+  const memberCount = await prisma.partyMember.count({ where: { partyId: full.partyId } });
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <p className="text-sm text-muted-foreground">{full.party.name}</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{full.title}</h1>
+        {full.description && <p className="mt-1 text-muted-foreground">{full.description}</p>}
+      </div>
+
+      <ActivityNav activityId={full.id} showMovies={full.type === "MOVIE_NIGHT"} />
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">{full.status.replaceAll("_", " ")}</Badge>
+          <span className="text-sm text-muted-foreground">
+            {full._count.availabilityResponses} of {memberCount} responded
+          </span>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Searching {format(full.rangeStart, "MMM d")}&ndash;{format(full.rangeEnd, "MMM d")},{" "}
+          {minutesToTime(full.dailyWindowStartMinute)}&ndash;
+          {minutesToTime(full.dailyWindowEndMinute)} ({full.timezone})
+        </p>
+
+        {full.scheduledEvent && (
+          <div className="rounded-md border bg-accent/50 p-4">
+            <p className="font-medium">
+              Scheduled for{" "}
+              {formatInTimeZone(
+                full.scheduledEvent.chosenStart,
+                full.timezone,
+                "EEEE, MMM d 'at' h:mm a",
+              )}
+            </p>
+            {full.scheduledEvent.googleCalendarLink && (
+              <a
+                href={full.scheduledEvent.googleCalendarLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm underline underline-offset-2"
+              >
+                View on Google Calendar
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}

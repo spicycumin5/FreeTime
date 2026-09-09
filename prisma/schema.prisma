@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Auth.js models (Prisma adapter contract) ---
+// Kept in the standard Auth.js shape so @auth/prisma-adapter works unmodified.
+// Account rows are where Google's access_token/refresh_token end up persisted,
+// which is what lets us call the Calendar API on a user's behalf after login.
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  accounts  Account[]
+  sessions  Session[]
+
+  ownedParties       Party[]              @relation("PartyOwner")
+  partyMemberships   PartyMember[]
+  createdActivities  Activity[]           @relation("ActivityCreator")
+  availabilityResps  AvailabilityResponse[]
+  scheduledEvents    ScheduledEvent[]     @relation("EventCreator")
+  movieSuggestions   MovieSuggestion[]
+  movieVotes         MovieVote[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- App models ---
+
+model Party {
+  id          String   @id @default(cuid())
+  name        String
+  inviteCode  String   @unique @default(cuid())
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy  User          @relation("PartyOwner", fields: [createdById], references: [id])
+  members    PartyMember[]
+  activities Activity[]
+}
+
+enum PartyRole {
+  OWNER
+  MEMBER
+}
+
+model PartyMember {
+  id       String    @id @default(cuid())
+  partyId  String
+  userId   String
+  role     PartyRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([partyId, userId])
+}
+
+enum ActivityType {
+  MOVIE_NIGHT
+  GENERIC
+}
+
+enum ActivityStatus {
+  COLLECTING_AVAILABILITY
+  READY_TO_SCHEDULE
+  SCHEDULED
+  CANCELED
+}
+
+model Activity {
+  id          String         @id @default(cuid())
+  partyId     String
+  createdById String
+  title       String
+  description String?
+  type        ActivityType   @default(GENERIC)
+  status      ActivityStatus @default(COLLECTING_AVAILABILITY)
+
+  // The search window for availability, and the grid the frontend derives from it.
+  rangeStart             DateTime
+  rangeEnd               DateTime
+  dailyWindowStartMinute Int // minutes since midnight, e.g. 9am = 540
+  dailyWindowEndMinute   Int // e.g. 11pm = 1380
+  slotGranularityMinutes Int      @default(30)
+  durationMinutes        Int      @default(120) // implied length of the activity itself
+  timezone               String // IANA tz name, e.g. "America/Los_Angeles"
+
+  createdAt DateTime @default(now())
+
+  party                Party                 @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  createdBy            User                  @relation("ActivityCreator", fields: [createdById], references: [id])
+  availabilityResponses AvailabilityResponse[]
+  scheduledEvent       ScheduledEvent?
+  movieSuggestions     MovieSuggestion[]
+}
+
+model AvailabilityResponse {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  updatedAt  DateTime @updatedAt
+
+  activity Activity           @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slots    AvailabilitySlot[]
+
+  @@unique([activityId, userId])
+}
+
+model AvailabilitySlot {
+  id                      String   @id @default(cuid())
+  availabilityResponseId  String
+  startsAt                DateTime // UTC
+  endsAt                  DateTime // UTC
+
+  availabilityResponse AvailabilityResponse @relation(fields: [availabilityResponseId], references: [id], onDelete: Cascade)
+
+  @@index([availabilityResponseId])
+}
+
+model ScheduledEvent {
+  id                 String   @id @default(cuid())
+  activityId         String   @unique
+  chosenStart        DateTime
+  chosenEnd          DateTime
+  googleEventId      String
+  googleCalendarLink String?
+  createdById        String
+  createdAt          DateTime @default(now())
+
+  activity  Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("EventCreator", fields: [createdById], references: [id])
+}
+
+model MovieSuggestion {
+  id            String   @id @default(cuid())
+  activityId    String
+  suggestedById String
+  title         String
+  tmdbId        Int?
+  posterUrl     String?
+  createdAt     DateTime @default(now())
+
+  activity    Activity    @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  suggestedBy User        @relation(fields: [suggestedById], references: [id], onDelete: Cascade)
+  votes       MovieVote[]
+}
+
+enum VoteValue {
+  UP
+  DOWN
+}
+
+model MovieVote {
+  id                 String    @id @default(cuid())
+  movieSuggestionId  String
+  userId             String
+  value              VoteValue
+
+  movieSuggestion MovieSuggestion @relation(fields: [movieSuggestionId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([movieSuggestionId, userId])
+}
